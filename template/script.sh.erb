@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# pmn 2025
+
+# Clean the environment
+module purge
+echo "Modules purged"
+
+# Go to workding directory
+work_dir=<%= context.workdir %>
+echo "Going to work dir: $work_dir"
+
+if [ ! -d "$work_dir" ]; then
+	echo "$work_dir does not exist. Creating it..."
+	mkdir -p $work_dir
+fi
+cd $work_dir || { echo "Failed to cd into $work_dir"; exit 1; }
+echo "Went to work dir: $(pwd)"
+
+data_path=<%= context.data_path %>
+queries=<%= context.queries %>
+result_file_path=<%= context.result_file_path %>
+use_lemmas=<%= context.use_lemmas %>
+use_tfidf=<%= context.use_tfidf %>
+use_semantic=<%= context.use_semantic %>
+beta=<%= context.beta %>
+
+command="../scripts/text-search.sh --data_path ${data_path} --queries ${queries} --result_file_path ${result_file_path} --beta ${beta}"
+
+if [ "${use_lemmas}" = "true" ]; then
+	command="${command} --use_lemmas"
+fi
+if [ "${use_tfidf}" = "true" ]; then
+	command="${command} --use_tfidf"
+fi
+if [ "${use_semantic}" = "true" ]; then
+	command="${command} --use_semantic"
+fi
+
+echo "Running command $command"
+eval "$command"

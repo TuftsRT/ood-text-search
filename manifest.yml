@@ -1,0 +1,7 @@
+---
+name: Text Search
+category: Interactive Apps
+subcategory: AI
+role: batch_connect
+description: |
+  This app allows users to apply a custom text search workflow to a directory of text files.

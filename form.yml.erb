@@ -1,0 +1,93 @@
+---
+cluster: "pax"
+bc_dynamic_js: true
+
+attributes:
+<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/all_partition.yml").indent(2) %>
+<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/gpu_type.yml").indent(2) %>
+<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/num_cores_generic.yml").indent(2) %>
+<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/num_memory_generic.yml").indent(2) %>
+
+  data_path:
+    widget: "path_selector"
+    required: true
+    label: "Input texts directory"
+    help: | 
+      The file path to the directory of .txt files that will be searched.
+
+  queries:
+    widget: "text_field"
+    required: true
+    label: "Queries to search for in the text files"
+    help: | 
+      The queries to search for in the .txt files.
+  
+  result_file_path:
+    widget: "path_selector"
+    required: true
+    label: "Result file path"
+    help: | 
+      The file path to the directory where the results will be saved.
+
+  use_lemmas:
+    widget: 'check_box'
+    label: 'Use Lemmas'
+    help: |
+      Check this box to use lemmas in the search instead of the original words.
+    checked_value: 'true'
+    unchecked_value: 'false'
+    default: 'false'
+  
+  use_tfidf:
+    widget: 'check_box'
+    label: 'Use TF-IDF'
+    help: |
+      Check this box to use TF-IDF weighting in the search.
+    checked_value: 'true'
+    unchecked_value: 'false'
+    default: 'false'
+
+  use_semantic:
+    widget: 'check_box'
+    label: 'Use Semantic Search'
+    help: |
+      Check this box to use semantic search in the search.
+    checked_value: 'true'
+    unchecked_value: 'false'
+    default: 'false'
+
+  beta:
+    widget: 'number_field'
+    label: 'Beta Parameter for Composite Score'
+    help: |
+      The beta parameter for the composite score calculation. Default is 0.5.
+    value: 0.5
+    step: 0.1
+    min: 0.0
+    max: 1.0
+
+  workdir:
+    label: "Working Directory"
+    widget: "path_selector"
+    directory: "/cluster/tufts"      
+    required: false
+    label: Working directory
+    favorites:
+        - /cluster/tufts
+        - /cluster/home
+
+form:
+  - bc_num_hours
+  - num_cores
+  - num_memory
+  - partition
+  - gpu_type 
+  - data_path
+  - queries
+  - result_file_path
+  - use_lemmas
+  - use_tfidf
+  - use_semantic 
+  - beta
+  - workdir
+
