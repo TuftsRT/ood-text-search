@@ -13,8 +13,8 @@ if [ ! -d "$work_dir" ]; then
 	echo "$work_dir does not exist. Creating it..."
 	mkdir -p $work_dir
 fi
-cd $work_dir || { echo "Failed to cd into $work_dir"; exit 1; }
-echo "Went to work dir: $(pwd)"
+
+chmod -R 775 .
 
 data_path=<%= context.data_path %>
 queries=<%= context.queries %>

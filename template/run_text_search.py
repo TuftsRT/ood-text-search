@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     merged_results = search_engine.search(
         query=queries,
-        top_k=5,
+        top_k=None,
         beta=beta,
         result_file_path=result_file_path
     )

@@ -65,6 +65,9 @@ class Dataloader:
         self.files_needing_ocr = []
 
         self._process_files()
+        print("Usable files:")
+        for text in self.usable:
+            print(text)
 
     def _process_files(self):
         total_files = len(self.all_files)
@@ -98,7 +101,7 @@ class Dataloader:
             elif file_path.endswith('.docx'):
                 text = self._read_word_text(file_path)
             elif file_path.endswith('.txt'):
-                text = self._read_word_text(file_path)
+                text = self._read_txt_text(file_path)
             else:
                 text = ''
             
@@ -123,7 +126,7 @@ class Dataloader:
             text += para.text
         return text
 
-    def _read_word_text(self, txt_path: str) -> str:
+    def _read_txt_text(self, txt_path: str) -> str:
         with open(txt_path, 'r', encoding='utf-8', errors='ignore') as f:
             text = f.read()
         return text
@@ -260,7 +263,7 @@ class TFIDFSearch:
         matches = pattern.findall(text.lower())
         return len(matches)
     
-    def search(self, query: str, top_k: Union[int, None] = 5) -> List[Tuple[str, float, List[str]]]:
+    def search(self, query: str, top_k: Union[int, None] = None) -> List[Tuple[str, float, List[str]]]:
         """
         Searches for the top_k most relevant texts based on the TF-IDF scores for the given query.
         Args:
@@ -379,7 +382,7 @@ class FlagEmbeddingSearch:
         return chunks
 
     
-    def _get_dense_score(self, query: str, top_k: Union[int, None] = 5, top_n: int = 10, batch_size: int = 32, agg_fnc=torch.mean, save_as_numpy: str="dense_vectors.npz") -> List[Tuple[str, float]]:
+    def _get_dense_score(self, query: str, top_k: Union[int, None] = None, top_n: int = 10, batch_size: int = 32, agg_fnc=torch.mean, save_as_numpy: str="dense_vectors.npz") -> List[Tuple[str, float]]:
         """
         Computes the dense scores for the given query using the FlagEmbedding model.
         Args:
@@ -438,9 +441,10 @@ class FlagEmbeddingSearch:
                     pickle.dump(all_sentence_embeddings, f)
                 print(f"Saved dense vectors to {save_as_numpy}.")
 
+        results.sort(key=lambda x: max(score for score, _ in x[1]), reverse=True)
         return results[:top_k] if top_k else results
 
-    def search(self, query: str, top_k: Union[int, None] = 5, top_n: int = 3) -> List[Tuple[str, float]]:
+    def search(self, query: str, top_k: Union[int, None] = None, top_n: int = 3) -> List[Tuple[str, float]]:
         """
         Searches for the top_k most relevant texts based on the specified scoring method.
         Args:
@@ -452,7 +456,7 @@ class FlagEmbeddingSearch:
         return self._get_dense_score(query, top_k)
 
 class SearchEngine:
-    def __init__(self, model_path: str='BAAI/bge-m3', tfidf=True, semantic=True, use_lemmas=False, dataloader=None, device='cpu', lemma_save_file="lemmatized_texts.txt") -> None:
+    def __init__(self, model_path: str='BAAI/bge-m3', tfidf=True, semantic=True, use_lemmas=False, dataloader=None, device='cpu', lemma_save_file="lemmatized_texts.json") -> None:
         """
         Initializes the SearchEngine with a model path and search configurations.
         Args:
@@ -527,35 +531,33 @@ class SearchEngine:
         softmax_weights = F.softmax(torch.tensor(scores), dim=0).numpy()
         return np.sum(np.array(scores) * softmax_weights)
 
-    def search(self, query: str, top_k: Union[int, None] = 5, top_n: int = 3, beta: float = 0.5, result_file_path="test_results.csv") -> Dict[str, List[Tuple[str, float]]]:
+    def search(self, query: str, top_k: Union[int, None] = None, top_n: int = 3, beta: float = 0.5, result_file_path="test_results.csv") -> Dict[str, List[Tuple[str, float]]]:
         """
         Searches for the top_k most relevant texts using both TF-IDF and FlagEmbedding methods.
-        Args:
-            query (str): The search query.
-            top_k (int): The number of top results to return.
-            top_n (int): The number of top query terms to consider for semantic scoring.
-            beta (float): Weighting factor for combining keyword and semantic scores.
-        Returns:
-            Dict[str, List[Tuple[str, float]]]: A dictionary containing the results from keyword search, semantic search, and composite scores.
         """
         if self.tfidf:
             print("Running keyword")
-            keyword = self.tfidf_search.search(query, top_k)
-
+            keyword = self.tfidf_search.search(query, top_k=None)  # Get ALL documents
+    
         if self.semantic:
             print("Running semantic")
-            semantic = self.flag_embedding_search.search(query=query, top_k=top_k, top_n=top_n)
-
+            semantic = self.flag_embedding_search.search(query=query, top_k=None, top_n=top_n)  # Get ALL documents
+    
         if self.tfidf and not self.semantic:
             results = {
                 'keyword': keyword
             }
             self.results = results
-
+    
             path_score = pd.DataFrame((lo[:-1] for lo in self.results['keyword']), columns=["Path", "keyword score"])
             term_counts = pd.DataFrame(([t[-1] for t in lo[-1]] for lo in self.results['keyword']), columns=[f"{q.lower()}_keyword" for q in query])
             k = pd.concat([path_score, term_counts], axis=1)
             merged_results = k.sort_values(by='keyword score', ascending=False).reset_index(drop=True)
+            
+            # Apply top_k filter here
+            if top_k is not None:
+                merged_results = merged_results.head(top_k)
+            
             result_file_path = os.path.join(self.output_path, result_file_path) if result_file_path else None
             if result_file_path and result_file_path.endswith('.csv'):
                 merged_results.to_csv(result_file_path, index=False)
@@ -573,11 +575,16 @@ class SearchEngine:
                 'semantic': semantic
             }
             self.results = results
-
+    
             term_scores = pd.DataFrame([[t[0] for t in lo[-1]] for lo in self.results['semantic']], columns=[f"{q.lower()}_semantic" for q in query])
             path_df = pd.DataFrame((lo[:-1] for lo in self.results['semantic']), columns=["Path"])
             s = pd.concat([path_df, term_scores], axis=1)
             merged_results = s.sort_values(by=f'{query[0].lower()}_semantic', ascending=False).reset_index(drop=True)
+            
+            # Apply top_k filter here
+            if top_k is not None:
+                merged_results = merged_results.head(top_k)
+            
             result_file_path = os.path.join(self.output_path, result_file_path) if result_file_path else None
             if result_file_path and result_file_path.endswith('.csv'):
                 merged_results.to_csv(result_file_path, index=False)
@@ -589,37 +596,66 @@ class SearchEngine:
                 return merged_results
             else:
                 return merged_results
-
+    
         if self.tfidf and self.semantic:
             print("Creating composite scores")
+            
+            # Create dictionaries for easier lookup
+            keyword_dict = {k[0]: k for k in keyword}
+            semantic_dict = {s[0]: s for s in semantic}
+            
+            # Get all unique paths from both searches
+            all_paths = set(keyword_dict.keys()) | set(semantic_dict.keys())
+            
             composite = []
-            for k, s in zip(keyword, semantic):
-                keyword_score = k[1]
-                semantic_score_pairs = [score for score, _ in s[1]]
-                semantic_score = self._combine_semantic_scores(semantic_score_pairs)
-                composite.append((k[0], keyword_score * beta + semantic_score * (1 - beta)))
-
+            for path in all_paths:
+                # Get keyword score (default to 0 if not found)
+                keyword_score = keyword_dict[path][1] if path in keyword_dict else 0.0
+                
+                # Get semantic score (default to 0 if not found)
+                if path in semantic_dict:
+                    semantic_score_pairs = [score for score, _ in semantic_dict[path][1]]
+                    semantic_score = self._combine_semantic_scores(semantic_score_pairs)
+                else:
+                    semantic_score = 0.0
+                
+                composite.append((path, keyword_score * beta + semantic_score * (1 - beta)))
+    
             results = {
                 'keyword': keyword,
                 'semantic': semantic,
                 'composite': composite
             }
             self.results = results
-
-            for key, value in results.items():
-                if key == 'keyword':
-                    path_score = pd.DataFrame((lo[:-1] for lo in self.results[key]), columns=["Path", "keyword score"])
-                    term_counts = pd.DataFrame(([t[-1] for t in lo[-1]] for lo in self.results[key]), columns=[f"{q.lower()}_keyword" for q in query])
-                    k = pd.concat([path_score, term_counts], axis=1)
-                elif key == 'semantic':
-                    term_scores = pd.DataFrame([[t[0] for t in lo[-1]] for lo in self.results['semantic']], columns=[f"{q.lower()}_semantic" for q in query])
-                    path_df = pd.DataFrame((lo[:-1] for lo in self.results[key]), columns=["Path"])
-                    s = pd.concat([path_df, term_scores], axis=1)
-                elif key == 'composite':
-                    c = pd.DataFrame(value, columns=["Path", "composite score"])
-                    c['composite score'] = c['composite score'].apply(lambda x: x)
+    
+            # Create dataframes for all paths
+            path_score = pd.DataFrame((lo[:-1] for lo in keyword), columns=["Path", "keyword score"])
+            term_counts = pd.DataFrame(([t[-1] for t in lo[-1]] for lo in keyword), columns=[f"{q.lower()}_keyword" for q in query])
+            k = pd.concat([path_score, term_counts], axis=1)
             
-            merged_results = k.merge(s, on="Path").merge(c, on="Path").sort_values(by='composite score', ascending=False).reset_index(drop=True)
+            term_scores = pd.DataFrame([[t[0] for t in lo[-1]] for lo in semantic], columns=[f"{q.lower()}_semantic" for q in query])
+            path_df = pd.DataFrame((lo[:-1] for lo in semantic), columns=["Path"])
+            s = pd.concat([path_df, term_scores], axis=1)
+            
+            c = pd.DataFrame(composite, columns=["Path", "composite score"])
+            
+            print(f"Keyword paths: {k.Path.to_list()}")
+            print(f"Semantic paths: {s.Path.to_list()}")
+            print(f"Composite paths: {c.Path.to_list()}")
+            
+            # Use outer merge to keep all paths
+            merged_results = (k.merge(s, on="Path", how="outer")
+                              .merge(c, on="Path", how="outer")
+                              .fillna(0)  # Fill missing scores with 0
+                              .sort_values(by='composite score', ascending=False)
+                              .reset_index(drop=True))
+            
+            # Apply top_k filter here at the end
+            if top_k is not None:
+                merged_results = merged_results.head(top_k)
+            
+            print(f"Merged paths: {merged_results.Path.to_list()}")
+            
             result_file_path = os.path.join(self.output_path, result_file_path) if result_file_path else None
             if result_file_path and result_file_path.endswith('.csv'):
                 merged_results.to_csv(result_file_path, index=False)
@@ -631,30 +667,3 @@ class SearchEngine:
                 return merged_results
             else:
                 return merged_results
-
-# def main():
-#     dl = Dataloader(
-#         data_path="test_docs",
-#         max_workers=4,
-#         batch_size=5
-#     )
-    
-#     se = SearchEngine(
-#         model_path='/cluster/tufts/tuftsai/models/BAAI_bge-m3',
-#         use_lemmas=True,
-#         dataloader=dl,
-#         device='cuda',
-#         lemma_save_file="lemmatized_texts.json"
-#     )
-
-#     query = ["aids", "hepatitis", "cancer"]
-#     merged_results = se.search(
-#         query=query,
-#         top_k=5,
-#         beta=0.3,
-#         result_file_path="test_results.xlsx"
-#     )
-#     print(merged_results)
-
-# if __name__ == "__main__":
-#     main()
