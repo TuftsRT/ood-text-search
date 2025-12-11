@@ -88,7 +88,7 @@ module load text-search
 alias text-search='singularity exec --nv /cluster/tufts/apps/container/ai/images/pnadel_text-search:0.0.2.sif python'
 
 echo "Modules loaded. Beginning text search..."
-text-search /cluster/tufts/tuftsai/apps/text-search/scripts/run_text_search.py --data_path "$DATA_PATH" --queries "$QUERIES" --beta "$BETA" $LEMMAS_FLAG $USE_TFIDF $USE_SEMANTIC --result_file_path "$RESULT_FILE_PATH" || {
+text-search ./run_text_search.py --data_path "$DATA_PATH" --queries "$QUERIES" --beta "$BETA" $LEMMAS_FLAG $USE_TFIDF $USE_SEMANTIC --result_file_path "$RESULT_FILE_PATH" || {
     echo "Error: Text search failed"
     exit 1
 }

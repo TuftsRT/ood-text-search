@@ -24,7 +24,7 @@ use_tfidf=<%= context.use_tfidf %>
 use_semantic=<%= context.use_semantic %>
 beta=<%= context.beta %>
 
-command="../scripts/text-search.sh --data_path ${data_path} --queries ${queries} --result_file_path ${result_file_path} --beta ${beta}"
+command="./text-search.sh --data_path ${data_path} --queries ${queries} --result_file_path ${result_file_path} --beta ${beta}"
 
 if [ "${use_lemmas}" = "true" ]; then
 	command="${command} --use_lemmas"
