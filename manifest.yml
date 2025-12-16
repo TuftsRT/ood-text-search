@@ -1,7 +1,7 @@
 ---
 name: Text Search
 category: Interactive Apps
-subcategory: AI
+subcategory: Research applications
 role: batch_connect
 description: |
-  This app allows users to apply a custom text search workflow to a directory of text files.
+  The Text Search app is a purpose-built research application that enables both semantic (meaning) and lexical (keyword) search across documents. This tool is not meant for personal use.

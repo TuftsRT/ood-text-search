@@ -3,10 +3,7 @@ cluster: "pax"
 bc_dynamic_js: true
 
 attributes:
-<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/all_partition.yml").indent(2) %>
-<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/gpu_type.yml").indent(2) %>
-<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/num_cores_generic.yml").indent(2) %>
-<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/num_memory_generic.yml").indent(2) %>
+<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/ai_tools.yml").indent(2) %>
 
   data_path:
     widget: "path_selector"
@@ -66,16 +63,6 @@ attributes:
     min: 0.0
     max: 1.0
 
-  workdir:
-    label: "Working Directory"
-    widget: "path_selector"
-    directory: "/cluster/tufts"      
-    required: false
-    label: Working directory
-    favorites:
-        - /cluster/tufts
-        - /cluster/home
-
 form:
   - bc_num_hours
   - num_cores
@@ -89,5 +76,3 @@ form:
   - use_tfidf
   - use_semantic 
   - beta
-  - workdir
-
