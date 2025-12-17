@@ -63,6 +63,16 @@ attributes:
     min: 0.0
     max: 1.0
 
+  workdir:
+    label: "Working Directory"
+    widget: "path_selector"
+    directory: "/cluster/tufts"      
+    required: false
+    label: Working directory
+    favorites:
+        - /cluster/tufts
+        - /cluster/home
+
 form:
   - bc_num_hours
   - num_cores
@@ -76,3 +86,4 @@ form:
   - use_tfidf
   - use_semantic 
   - beta
+  - workdir
