@@ -1,11 +1,3 @@
-<%
-  show_qos = false
-  qos_options = (`sacctmgr show assoc where user=#{ENV['USER']} format=qos%1000 --noheader --parsable2 `).split(",")
-
-  if qos_options.include?("interactive")
-    show_qos = true
-  end
-%>
 ---
 cluster: "pax"
 bc_dynamic_js: true
@@ -112,6 +104,4 @@ form:
   - use_semantic 
   - beta
   - workdir
-<% if show_qos  %>
   - ta_qos
-<%end%>
