@@ -1,29 +1,49 @@
 ---
+<%
+@partition_filter = :all
+_partial_path = '/etc/ood/config/apps/dashboard/batch_connect/partials/resource_discovery.erb'
+ERB.new(File.read(_partial_path)).result(binding)
+%>
+
 cluster: "pax"
 bc_dynamic_js: true
 
 attributes:
-<%= File.read("/etc/ood/config/apps/dashboard/batch_connect/partials/ai_tools.yml").indent(2) %>
+<%= generate_partition_field.indent(2) %>
+<%= generate_gpu_type_field.indent(2) %>
+<%= generate_num_cores_field(
+      extra_help: "Scale this with the size of your document collection and which search " \
+                  "modes you enable; semantic search benefits from more cores. " \
+                  "If unsure, the default above is a reasonable starting point.",
+      default_value: 8
+    ).indent(2) %>
+<%= generate_num_memory_field(
+      extra_help: "A simple starting point is roughly double your selected core count, in GB " \
+                  "(for example, 8 cores suggests about 16GB memory). Semantic search over a " \
+                  "large collection needs proportionally more.",
+      default_value: 32
+    ).indent(2) %>
+<%= generate_num_hours_field.indent(2) %>
 
   data_path:
     widget: "path_selector"
     required: true
     label: "Input texts directory"
-    help: | 
+    help: |
       The file path to the directory of .txt files that will be searched.
 
   queries:
     widget: "text_field"
     required: true
     label: "Queries to search for in the text files"
-    help: | 
+    help: |
       The queries to search for in the .txt files.
-  
+
   result_file_path:
     widget: "path_selector"
     required: true
     label: "Result file path"
-    help: | 
+    help: |
       The file path to the directory where the results will be saved.
 
   use_lemmas:
@@ -34,7 +54,7 @@ attributes:
     checked_value: 'true'
     unchecked_value: 'false'
     default: 'false'
-  
+
   use_tfidf:
     widget: 'check_box'
     label: 'Use TF-IDF'
@@ -66,13 +86,13 @@ attributes:
   workdir:
     label: "Working Directory"
     widget: "path_selector"
-    directory: "/cluster/tufts"      
+    directory: "/cluster/tufts"
     required: false
     label: Working directory
     favorites:
         - /cluster/tufts
         - /cluster/home
-  
+
   ta_qos:
     widget: check_box
     label: "Request priority start"
@@ -80,6 +100,14 @@ attributes:
     value: "normal"
     checked_value: "interactive"
     unchecked_value: "normal"
+
+  docs_link_block:
+    widget: text_field
+    class: "d-none"
+    skip_label: true
+    help: |
+      For full documentation on this tool, see the [AI Tools guide](https://go.tufts.edu/AITools).
+
   disclaimer_block:
     widget: text_field
     class: "d-none"
@@ -90,18 +118,19 @@ attributes:
 <%end%>
 
 form:
+  - docs_link_block
   - disclaimer_block
+  - partition  
   - bc_num_hours
   - num_cores
   - num_memory
-  - partition
-  - gpu_type 
+  - gpu_type
   - data_path
   - queries
   - result_file_path
   - use_lemmas
   - use_tfidf
-  - use_semantic 
+  - use_semantic
   - beta
   - workdir
   - ta_qos
