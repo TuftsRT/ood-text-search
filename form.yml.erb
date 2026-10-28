@@ -1,8 +1,20 @@
 ---
 <%
 @partition_filter = :all
+@partition_qos_path = '/etc/ood/config/apps/dashboard/batch_connect/partials/partition_qos.rb'
 _partial_path = '/etc/ood/config/apps/dashboard/batch_connect/partials/resource_discovery.erb'
 ERB.new(File.read(_partial_path)).result(binding)
+%>
+<%
+# resource_discovery.erb's generators take no per-app options, so apply this
+# app's default value and extra help text to the generated field YAML.
+# extra_help is also set as data-extra-help so form.js keeps it when it
+# rewrites the help text on partition/GPU changes.
+def customize_field(yaml, default_value:, extra_help:)
+  yaml.sub(/^  value: .*$/) { "  value: #{default_value}" }
+      .sub(/^    data:\n/) { "    data:\n      extra_help: '#{extra_help.gsub("'", "''")}'\n" }
+      .sub(/^  help: "(.*)"$/) { "  help: \"#{$1} #{extra_help.gsub('"') { '\\"' }}\"" }
+end
 %>
 
 cluster: "pax"
@@ -11,17 +23,17 @@ bc_dynamic_js: true
 attributes:
 <%= generate_partition_field.indent(2) %>
 <%= generate_gpu_type_field.indent(2) %>
-<%= generate_num_cores_field(
+<%= customize_field(generate_num_cores_field,
+      default_value: 8,
       extra_help: "Scale this with the size of your document collection and which search " \
                   "modes you enable; semantic search benefits from more cores. " \
-                  "If unsure, the default above is a reasonable starting point.",
-      default_value: 8
+                  "If unsure, the default above is a reasonable starting point."
     ).indent(2) %>
-<%= generate_num_memory_field(
+<%= customize_field(generate_num_memory_field,
+      default_value: 32,
       extra_help: "A simple starting point is roughly double your selected core count, in GB " \
                   "(for example, 8 cores suggests about 16GB memory). Semantic search over a " \
-                  "large collection needs proportionally more.",
-      default_value: 32
+                  "large collection needs proportionally more."
     ).indent(2) %>
 <%= generate_num_hours_field.indent(2) %>
 
@@ -96,7 +108,13 @@ attributes:
   ta_qos:
     widget: check_box
     label: "Request priority start"
-    help: "Limited to 1 running job at a time. (--qos=interactive)"
+    cacheable: false
+    help: |
+      Submits the job with `--qos=interactive` for higher scheduling priority, so it
+      starts sooner. Intended for short, small sessions: while the box is checked, the
+      resource fields above are automatically capped to the interactive QOS limits and
+      a notice below lists them. Leave this box unchecked if your job needs more time
+      or resources than those limits allow.
     value: "normal"
     checked_value: "interactive"
     unchecked_value: "normal"
